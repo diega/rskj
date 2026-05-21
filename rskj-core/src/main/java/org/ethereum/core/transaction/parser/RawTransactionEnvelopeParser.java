@@ -31,6 +31,7 @@ public final class RawTransactionEnvelopeParser {
     private static final Type0RawTransactionParser type0Parser = new Type0RawTransactionParser();
     private static final Type1RawTransactionParser type1Parser = new Type1RawTransactionParser();
     private static final Type2RawTransactionParser type2Parser = new Type2RawTransactionParser();
+    private static final Type4RawTransactionParser type4Parser = new Type4RawTransactionParser();
 
     private RawTransactionEnvelopeParser() {}
 
@@ -63,7 +64,8 @@ public final class RawTransactionEnvelopeParser {
             case LEGACY -> type0Parser;
             case TYPE_1 -> type1Parser;
             case TYPE_2 -> typePrefix.isRskNamespace() ? type0Parser : type2Parser;
-            case TYPE_3, TYPE_4 -> throw new IllegalArgumentException("Unsupported transaction type: " + typePrefix);
+            case TYPE_3 -> throw new IllegalArgumentException("Unsupported transaction type: " + typePrefix);
+            case TYPE_4 -> type4Parser;
         };
     }
 }
