@@ -15,7 +15,6 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
-
 package co.rsk.peg;
 
 import co.rsk.bitcoinj.core.BtcTransaction;
@@ -47,15 +46,38 @@ public class PegoutsWaitingForConfirmations {
         this.entries = new EntriesStore(entries);
     }
 
+    // public Collection<Entry> getEntriesWithoutHash(ForBlock activations) {
+    //     var rskip559 = activations.isActive(ConsensusRule.RSKIP559);
+    //     var result = entries.entriesSet.stream().filter(e -> e.getPegoutCreationRskTxHash() == null);
+    //     if (rskip559) {
+    //         result = result.sorted(Entry.BTC_TX_COMPARATOR);
+    //     }
+    //     return result.toList();
+    // }
+    
     public Collection<Entry> getEntriesWithoutHash() {
         return entries.entriesSet.stream().filter(e -> e.getPegoutCreationRskTxHash() == null).toList();
     }
 
+
+    // public Collection<Entry> getEntriesWithHash(ForBlock activations) {
+    //     var rskip559 = activations.isActive(ConsensusRule.RSKIP559);
+    //     var result = entries.entriesSet.stream().filter(e -> e.getPegoutCreationRskTxHash() != null);
+    //     if (rskip559) {
+    //         result = result.sorted(Entry.BTC_TX_COMPARATOR);
+    //     }
+    //     return result.toList();
+    // }
+    
     public Collection<Entry> getEntriesWithHash() {
         return entries.entriesSet.stream().filter(e -> e.getPegoutCreationRskTxHash() != null).toList();
     }
 
-    public Collection<Entry> getEntries() {
+    public Collection<Entry> getEntries(ForBlock activations) {
+        var rskip559 = activations.isActive(ConsensusRule.RSKIP559);
+        if (rskip559) {
+            return entries.entriesSet.stream().sorted(Entry.BTC_TX_COMPARATOR).toList();
+        }
         return entries.entriesSet.stream().toList();
     }
 
@@ -96,17 +118,32 @@ public class PegoutsWaitingForConfirmations {
 
         private final HashSet<Entry> entriesSet;
 
+        /**
+         * Must be equal to new HashSet() call in Java 17.
+         * Uset it to preserve old behaviour in Java21+.
+         */
+        public static HashSet<Entry> setOfEntries() {
+            return new HashSet<>(0, DEFAULT_LOAD_FACTOR);
+        }
+       
+        /**
+         * This is a standard code for `new HashSet<>(entries);` in Java 17.
+         * Coefficients were changed in Java 21.
+         * Use it to prserve old behaviour in Java21+. 
+         */
+        public static HashSet<Entry> setOfEntries(Collection<Entry> entries) {
+            // Need to hardcode Java 17 init params here to preserve old behaviour in Java 21+
+            var ehs = new HashSet<Entry>(Math.max((int) (entries.size()/DEFAULT_LOAD_FACTOR) + 1, 16));
+            ehs.addAll(entries);
+            return ehs;
+        }
+
         public EntriesStore() {
-            // this must be equal to new HashSet() call in Java 17
-            this.entriesSet = new HashSet<>(0, DEFAULT_LOAD_FACTOR);
+            this.entriesSet = EntriesStore.setOfEntries();
         }
 
         public EntriesStore(Collection<Entry> entries) {
-            // This is a standard code for `new HashSet<>(entries);` in Java 17
-            // Coefficients were changed in Java 21
-            // Need to hardcode Java 17 init params here to preserve old behaviour in Java 21+
-            this.entriesSet = new HashSet<>(Math.max((int) (entries.size()/DEFAULT_LOAD_FACTOR) + 1, 16));
-            this.entriesSet.addAll(entries);
+            this.entriesSet = EntriesStore.setOfEntries(entries);
         }
 
         private boolean hasEnoughConfirmations(Entry entry, Long currentBlockNumber, Integer minimumConfirmations) {
